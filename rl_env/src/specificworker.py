@@ -24,6 +24,8 @@ from PySide2.QtWidgets import QApplication
 from rich.console import Console
 from genericworker import *
 import interfaces as ifaces
+import time
+from zmqRemoteApi import RemoteAPIClient
 
 sys.path.append('/opt/robocomp/lib')
 console = Console(highlight=False)
@@ -38,6 +40,39 @@ console = Console(highlight=False)
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map, startup_check=False):
         super(SpecificWorker, self).__init__(proxy_map)
+
+        self.constants = {
+            "EPOCHS": 3,
+            "SCENE": "/home/robocomp/robocomp/components/manipulation_kinova_gen3/etc/kinova_env_dani_bloquesApilados.ttt",
+            "TIMESTAMPS_PER_EPOCH": 2,
+            "POS": 1,
+            "ZERO": 0,
+            "NEG": -1,
+            "ARM_PATH": "/customizableTable/gen3",
+            "CAMERA_PATH": "/customizableTable/Actuator8/\
+                            Shoulder_Link_respondable0/Actuator0/\
+                            HalfArm1_Link_respondable0/Actuator2/\
+                            HalfArm2_Link_respondable/Actuator3/\
+                            ForeArm_Link_respondable0/Actuator14/\
+                            SphericalWrist1_link_respondable0/Actuator5/\
+                            SphericalWrist2_Link_respondable0/Actuator6/\
+                            Bracelet_Link_respondable0/Bracelet_link_visual0/camera_arm"
+        }
+        
+        print("Program started")
+        client = RemoteAPIClient()
+        self.sim = client.getObject("sim")
+        self.defaultIdleFps = self.sim.getInt32Param(self.sim.intparam_idle_fps)
+        self.sim.setInt32Param(self.sim.intparam_idle_fps, 0)
+        self.sim.loadScene(self.constants["SCENE"])
+        print('Scene loaded')
+
+        self.arm = self.sim.getObject(self.constants["ARM_PATH"])
+        self.camera = self.sim.getObject(self.constants["CAMERA_PATH"])
+
+        #client.setStepping(True)
+        self.sim.startSimulation()
+
         self.Period = 2000
         if startup_check:
             self.startup_check()
@@ -46,40 +81,33 @@ class SpecificWorker(GenericWorker):
             self.timer.start(self.Period)
 
     def __del__(self):
-        """Destructor"""
+        self.sim.stopSimulation()
+        self.sim.setInt32Param(self.sim.intparam_idle_fps, self.defaultIdleFps)
+        print("Program ended")
 
     def setParams(self, params):
-        # try:
-        #	self.innermodel = InnerModel(params["InnerModelPath"])
-        # except:
-        #	traceback.print_exc()
-        #	print("Error reading config params")
         return True
 
 
     @QtCore.Slot()
     def compute(self):
-        print('SpecificWorker.compute...')
-        # computeCODE
-        # try:
-        #   self.differentialrobot_proxy.setSpeedBase(100, 0)
-        # except Ice.Exception as e:
-        #   traceback.print_exc()
-        #   print(e)
-
-        # The API of python-innermodel is not exactly the same as the C++ version
-        # self.innermodel.updateTransformValues('head_rot_tilt_pose', 0, 0, 0, 1.3, 0, 0)
-        # z = librobocomp_qmat.QVec(3,0)
-        # r = self.innermodel.transform('rgbd', z, 'laser')
-        # r.printvector('d')
-        # print(r[0], r[1], r[2])
+        print("SpecificWorker.compute...")
 
         return True
 
     def startup_check(self):
         QTimer.singleShot(200, QApplication.instance().quit)
 
+    def step(action):
+        # COPPELIA STEP
+        pass
 
+    def reset():
+        pass
 
+    def next_action():
+        pass
 
+    def reward():
+        pass 
 
