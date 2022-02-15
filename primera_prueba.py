@@ -6,64 +6,12 @@
 # blocking example, see simpleTest-nonBlocking.py
 
 import time
-
+import sys
+from numpy import linalg as LA
+import numpy as np
+sys.path.append('/home/alumno/software/CoppeliaSim_Edu_V4_3_0_Ubuntu20_04/programming/zmqRemoteApi/clients/python')
 from zmqRemoteApi import RemoteAPIClient
 
-
-# print('Program started')
-
-# client = RemoteAPIClient()
-# sim = client.getObject('sim')
-
-# When simulation is not running, ZMQ message handling could be a bit
-# slow, since the idle loop runs at 8 Hz by default. So let's make
-# sure that the idle loop runs at full speed for this program:
-# defaultIdleFps = sim.getInt32Param(sim.intparam_idle_fps)
-# sim.setInt32Param(sim.intparam_idle_fps, 0)
-
-# sim.loadScene('/home/robocomp/robocomp/components/manipulation_kinova_gen3/etc/kinova_env_dani_bloquesApilados.ttt')
-
-# # Create a few dummies and set their positions:
-# handles = [sim.createDummy(0.01, 12 * [0]) for _ in range(50)]
-# for i, h in enumerate(handles):
-#     sim.setObjectPosition(h, -1, [0.01 * i, 0.01 * i, 0.01 * i])
-
-# # Run a simulation in asynchronous mode:
-# sim.startSimulation()
-# while (t := sim.getSimulationTime()) < 3:
-#     s = f'Simulation time: {t:.2f} [s] (simulation running asynchronously '\
-#         'to client, i.e. non-stepped)'
-#     print(s)
-#     sim.addLog(sim.verbosity_scriptinfos, s)
-# sim.stopSimulation()
-# # If you need to make sure we really stopped:
-# while sim.getSimulationState() != sim.simulation_stopped:
-#     time.sleep(0.1)
-
-# # Run a simulation in stepping mode:
-# client.setStepping(True)
-# sim.startSimulation()
-# while (t := sim.getSimulationTime()) < 3:
-#     s = f'Simulation time: {t:.2f} [s] (simulation running synchronously '\
-#         'to client, i.e. stepped)'
-#     print(s)
-#     sim.addLog(sim.verbosity_scriptinfos, s)
-#     client.step()  # triggers next simulation step
-# sim.stopSimulation()
-
-# # Remove the dummies created earlier:
-# for h in handles:
-#     sim.removeObject(h)
-
-# Restore the original idle loop frequency:
-# sim.setInt32Param(sim.intparam_idle_fps, defaultIdleFps)
-
-# print('Program ended')
-
-
-# ===================================================================================================================================
-# ===================================================================================================================================
-# ===================================================================================================================================
 
 
 ###################################################################
@@ -82,6 +30,15 @@ constants = {
     "POS": 1,
     "ZERO": 0,
     "NEG": -1,
+    "ARM_PATH": "/customizableTable/gen3",
+    "CAMERA_PATH": "/customizableTable/Actuator8/\
+                    Shoulder_Link_respondable0/Actuator0/\
+                    HalfArm1_Link_respondable0/Actuator2/\
+                    HalfArm2_Link_respondable/Actuator3/\
+                    ForeArm_Link_respondable0/Actuator14/\
+                    SphericalWrist1_link_respondable0/Actuator5/\
+                    SphericalWrist2_Link_respondable0/Actuator6/\
+                    Bracelet_Link_respondable0/Bracelet_link_visual0/camera_arm"
 }
 
 ###################################################################
@@ -111,6 +68,8 @@ def next_action():
 def reward():
     pass 
 
+
+
 ###################################################################
 # MAIN
 ###################################################################
@@ -130,18 +89,43 @@ sim.setInt32Param(sim.intparam_idle_fps, 0)
 sim.loadScene(constants["SCENE"])
 print('Scene loaded')
 
+###################################################################
+# FUNCTIONS
+###################################################################
+base_obj = sim.getObject('/customizableTable/gen3')
+# camera = sim.getObject(constants["CAMERA_PATH"])
+target_obj = sim.getObjectHandle('target')
+goal_obj = sim.getObjectHandle('goal')
+tip_obj = sim.getObjectHandle('tip')
+
+def moveArm(objToMove, referencedTo):
+    pos = sim.getObjectPose(objToMove, referencedTo)
+    pos += pose
+    sim.setObjectPose(objToMove, referencedTo, pos)
+    dist = sys.float_info.max
+    while dist > 0.1:
+        print(dist)
+        pAux = sim.getObjectPose(objToMove, goal_obj)
+        dist = LA.norm(np.array([pAux[0], pAux[1], pAux[2]]) - np.array([pose[0], pose[1], pose[2]]))
+
+    # while (t := sim.getSimulationTime()) < 3:
+    #     print("CACA")
+
 #client.setStepping(True)
 sim.startSimulation()
 
 ###################################################################
 # LEARNING LOOP
 ###################################################################
-while (t := sim.getSimulationTime()) < 1:
-    sim.callScriptFunction("close@ROBOTIQ_85", 1)
-while (t := sim.getSimulationTime()) < 2:
-    sim.callScriptFunction("open@ROBOTIQ_85", 1)
-while (t := sim.getSimulationTime()) < 3:
-    sim.callScriptFunction("close@ROBOTIQ_85", 1)
+# while (t := sim.getSimulationTime()) < 1:
+#     sim.callScriptFunction("close@ROBOTIQ_85", 1)
+# while (t := sim.getSimulationTime()) < 2:
+#     sim.callScriptFunction("open@ROBOTIQ_85", 1)
+moveArm(goal_obj, base_obj, [0, 0, 0])
+moveArm(goal_obj, base_obj, [0.1, 0.1, 0.1])
+
+
+# arm.
 
 ''' # Bucle de aprendizaje (OpenAI Gym)
 for i in constants["EPOCHS"]
@@ -159,5 +143,3 @@ for i in constants["EPOCHS"]
 sim.stopSimulation()
 sim.setInt32Param(sim.intparam_idle_fps, defaultIdleFps)
 print('Program ended')
-#else: 
-#    print(caca)
