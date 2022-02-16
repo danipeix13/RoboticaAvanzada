@@ -23,14 +23,14 @@ class EnvKinova():
         self.defaultIdleFps = self.sim.getInt32Param(self.sim.intparam_idle_fps)
         self.sim.setInt32Param(self.sim.intparam_idle_fps, 0)
 
-        self.sim.loadScene("/home/robocomp/robocomp/components/manipulation_kinova_gen3/etc/kinova_env_dani_bloquesApilados.ttt")
+        self.sim.loadScene("/home/robocomp/robocomp/components/manipulation_kinova_gen3/etc/kinova_env_dani_bloquesApilados.ttt") # MODIFICAR ENTORNO: un solo cubo
         print('Scene loaded')
 
         # Agent
         base = self.sim.getObject('/customizableTable/gen3')
-        tip = self.sim.getObjectHandle('tip'),
-        target = self.sim.getObjectHandle('target'),
-        goal = self.sim.getObjectHandle('goal'),
+        tip = self.sim.getObjectHandle('tip')
+        target = self.sim.getObjectHandle('target')
+        goal = self.sim.getObjectHandle('goal')
         self.agent = {
             "base": base,
             "tip": tip,
@@ -40,37 +40,43 @@ class EnvKinova():
             # OBTENER PINZA
         }
 
+        # OBTENER BLOQUE
+
         # client.setStepping(True)
         self.sim.startSimulation()
 
     def close(self):
+        """ Parar simulación (y destruir escena?) """
         self.sim.stopSimulation()
         self.sim.setInt32Param(self.sim.intparam_idle_fps, self.defaultIdleFps)
         print('Program ended')
 
     def reset(self):
-        # Poner el cubo en la posición inicial
-        # Mover el brazo a la posición previa al grasping
-        # Poner tiempo a cero
+        """ Cubo a posición inicial, brazo a posición inicial, tiempo a cero """
+        self.__reset_arm()
+        self.__reset_block()
         self.current_time = 0
         pass
 
     def action_space_sample(self):
-        # Devolver accion random o de la tabla
+        """ Devolver accion random o de la tabla """
         pass
 
     def step(self, action):
-
+        """  """
         # return observation, reward, done, info
         pass
 
     def __reset_arm(self):
+        """ Mandar el brazo a la posición inicial (posición previa al grasping) """
         pass
 
     def __reset_block(self):
+        """ Mover el bloque a la posición inicial """
         pass
 
     def __moveArm(self, tg_pos):
+        """  """
         current_pose = self.sim.getObjectPose(self.agent["tip"], self.agent["base"])
         goal_pose = self.sim.getObjectPose(tg_pos, self.agent["base"])
         delta_pose = goal_pose - current_pose
