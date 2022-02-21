@@ -33,10 +33,11 @@ console = Console(highlight=False)
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map, startup_check=False):
         super(SpecificWorker, self).__init__(proxy_map)
+        print("SpecificWorker.__init__")
 
         self.env = EnvKinova()
 
-        self.Period = 2000
+        self.Period = 1000
         if startup_check:
             self.startup_check()
         else:
@@ -44,18 +45,21 @@ class SpecificWorker(GenericWorker):
             self.timer.start(self.Period)
 
     def __del__(self):
+        print("SpecificWorker.__del__")
         self.env.close()
         pass
 
     def setParams(self, params):
+        print("SpecificWorker.setParams")
         return True
 
     @QtCore.Slot()
     def compute(self):
         print("SpecificWorker.compute...")
-
+        self.env.test()
         return True
 
     def startup_check(self):
+        print("SpecificWorker.startup_check")
         QTimer.singleShot(200, QApplication.instance().quit)
 
