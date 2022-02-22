@@ -71,7 +71,7 @@ class EnvKinova():
         pos, wrist, grip = self.__interpretate_action(action)
         self.__move_arm(pos)
         self.__move_wrist(wrist)
-        # self.__move_grip(grip)
+        self.__move_grip(grip)
         # coppelia step
         # observation = ...
         # reward = self.__calculate_reward()
@@ -86,45 +86,18 @@ class EnvKinova():
         self.sim.setObjectPose(self.agent["goal"], self.rs_zero, tg_pos)
         dist = sys.float_info.max
         while dist > 0.1:
-            # print(dist)
             pose = self.sim.getObjectPose(self.agent["tip"], self.rs_zero)
             dist = LA.norm(np.array(pose[:3]) - np.array(tg_pos[:3]))
 
     def __move_wrist(self, action):
-        # rot = self.sim.getObjectOrientation(self.agent["wrist"], self.rs_zero)
-        # rot[2] += action
-        # self.sim.setObjectOrientation(self.agent['wrist'], self.rs_zero, rot)
-        jointAngle = self.sim.getJointPosition(self.agent["wrist"])
-        targetAngle = (jointAngle + action) 
-        while abs(jointAngle - targetAngle) > 0.1 * math.pi / 180:
-            vel = self.__computeTargetVelocity(jointAngle, targetAngle)
-            self.sim.setJointTargetVelocity(self.agent["wrist"], vel)
-            self.sim.setJointMaxForce(self.agent["wrist"], 100)
-            # self.client.step()
-            jointAngle = self.sim.getJointPosition(self.agent["wrist"])
-            print(f"V: {vel}, deltaAngle: {jointAngle}")
-    
-    def __computeTargetVelocity(self, jointAngle, targetAngle):
-        dynStepSize = 0.005
-        velUpperLimit = 360 * math.pi / 180
-        PID_P = 0.1
-        errorValue = targetAngle - jointAngle
-        sinAngle = math.sin(errorValue)
-        cosAngle = math.cos(errorValue)
-        errorValue = math.atan2(sinAngle, cosAngle)
-        ctrl = errorValue * PID_P
+        rot = self.sim.getObjectOrientation(self.agent["tip"], self.rs_zero)
+        posJoint = self.sim.getJointPosition(self.agent['wrist'])
 
-        # Calculate the velocity needed to reach the position
-        # in one dynamic time step:
-        velocity = ctrl / dynStepSize
-        if velocity > velUpperLimit:
-            velocity = velUpperLimit
+        rot[1] += action / 10
+        posJoint += action / 10
 
-        if velocity < -velUpperLimit:
-            velocity = -velUpperLimit
-
-        return velocity
-
+        self.sim.setObjectOrientation(self.agent['tip'], self.rs_zero, rot)
+        self.sim.setJointPosition(self.agent['wrist'], posJoint)
 
     def __move_grip(self, action):
         if action == 1:
@@ -170,7 +143,13 @@ class EnvKinova():
         if it == 2:
             it = 0
         # print(it)
-        self.step([0, 0, 0, 1, 0])
+        x = it 
+        y = it
+        z = it
+        wrist = it
+        grip = it
+
+        self.step([x, y, z, wrist, grip])
 
 
 

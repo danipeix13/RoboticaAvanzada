@@ -37,7 +37,7 @@ class SpecificWorker(GenericWorker):
 
         self.env = EnvKinova()
 
-        self.Period = 1000
+        self.Period = 500
         if startup_check:
             self.startup_check()
         else:
