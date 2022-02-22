@@ -55,7 +55,7 @@ class SpecificWorker(GenericWorker):
 
     @QtCore.Slot()
     def compute(self):
-        print("SpecificWorker.compute...")
+        print("\nSpecificWorker.compute...")
         self.env.test()
         return True
 
