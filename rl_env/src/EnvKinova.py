@@ -25,7 +25,7 @@ class EnvKinova():
         self.sim.setInt32Param(self.sim.intparam_idle_fps, 0)
 
         # TODO: Mover escena.ttt a la carpeta de robotica avanzada
-        self.sim.loadScene("../etc/kinova_rl.ttt")
+        self.sim.loadScene("/home/robocomp/robocomp/components/RoboticaAvanzada/rl_env/etc/kinova_rl.ttt")
         print('Scene loaded')
 
     
@@ -45,7 +45,7 @@ class EnvKinova():
         self.block = self.sim.getObjectHandle('block')
         self.block_init_pose = self.sim.getObjectPose(self.block, self.rs_zero)
 
-        self.client.setStepping(True)
+        # self.client.setStepping(True)
         self.sim.startSimulation()
 
     def close(self):
@@ -95,15 +95,16 @@ class EnvKinova():
         # rot[2] += action
         # self.sim.setObjectOrientation(self.agent['wrist'], self.rs_zero, rot)
         jointAngle = self.sim.getJointPosition(self.agent["wrist"])
-        targetAngle = jointAngle + action * 10
+        targetAngle = (jointAngle + action) 
         while abs(jointAngle - targetAngle) > 0.1 * math.pi / 180:
             vel = self.__computeTargetVelocity(jointAngle, targetAngle)
             self.sim.setJointTargetVelocity(self.agent["wrist"], vel)
             self.sim.setJointMaxForce(self.agent["wrist"], 100)
-            self.client.step()
+            # self.client.step()
             jointAngle = self.sim.getJointPosition(self.agent["wrist"])
+            print(f"V: {vel}, deltaAngle: {jointAngle}")
     
-    def __computeTargetVelocity(jointAngle, targetAngle):
+    def __computeTargetVelocity(self, jointAngle, targetAngle):
         dynStepSize = 0.005
         velUpperLimit = 360 * math.pi / 180
         PID_P = 0.1
@@ -141,12 +142,11 @@ class EnvKinova():
             delta_pose = list(map(lambda x: x/1000, action[:3])) + [0, 0, 0, 0]
             new_pose = [a+b for a,b in list(zip(current_pose,delta_pose))]
             # print(delta_pose, new_pose)
-
             wrist_action, grip_action = action[3], action[4]
 
             return new_pose, wrist_action, grip_action
         else:
-            print("INCORRECT ACTION")
+            print("INCORRECT ACTION: values not in [-1, 0, 1]")
             return None
 
     def __calculate_reward(self):
@@ -169,8 +169,8 @@ class EnvKinova():
         it = self.testITER -1
         if it == 2:
             it = 0
-        print(it)
-        self.step([0, 0, 0, 0, 1])
+        # print(it)
+        self.step([0, 0, 0, 1, 0])
 
 
 
