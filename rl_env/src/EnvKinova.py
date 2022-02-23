@@ -1,6 +1,7 @@
 import sys
 import time
 import math
+import cv2 as cv
 import numpy as np
 from numpy import linalg as LA
 sys.path.append('/home/robocomp/software/CoppeliaSim_Edu_V4_3_0_Ubuntu20_04/programming/zmqRemoteApi/clients/python')
@@ -101,7 +102,7 @@ class EnvKinova():
         self.__move_arm(pos)
         self.__move_wrist(wrist)
         self.__move_grip(grip)
-        # coppelia step
+        # self.client.step()
         observation = self.__observate()
         # reward = self.__calculate_reward()
         # done = self.__check_if_done()
@@ -134,7 +135,7 @@ class EnvKinova():
         if action == 1:
             self.sim.callScriptFunction("open@ROBOTIQ_85", 1)
         elif action == 0:
-            self.sim.callScriptFunction("stop@ROBOTIQ_85", 1) # TODO: Implementar/Corregir
+            self.sim.callScriptFunction("stop@ROBOTIQ_85", 1)
         elif action == -1:
             self.sim.callScriptFunction("close@ROBOTIQ_85", 1)
 
@@ -155,8 +156,27 @@ class EnvKinova():
 
     def __observate(self):
         """  """
-        imageBuffer = self.sim.getVisionSensorImage(self.agent["camera"])
-        print(np.shape(imageBuffer))
+        imgBuffer, resX, resY = self.sim.getVisionSensorCharImage(self.agent["camera"])
+        # img = np.frombuffer(imgBuffer, dtype=np.uint8).reshape(resY, resX, 3)
+        # print(np.shape(img))
+        # img = cv.flip(cv.cvtColor(img, cv.COLOR_BGR2RGB), 0)
+        # img = cv.rectangle(img, (200, 290), (300, 390), (0, 0, 255), 2)
+        # cv.imshow('RBG', img)
+
+
+        depthBuffer = self.sim.getVisionSensorDepthBuffer(self.agent["camera"])
+        print(np.shape(depthBuffer), type(depthBuffer))
+        depth = np.array(depthBuffer, dtype=np.float)
+        depth.reshape(resY, resX)
+        print(depth.shape)
+        # depth = cv.flip(cv.cvtColor(depth, cv.COLOR_BGR2RGB), 0)
+        depth = cv.rectangle(depth, (200, 290), (300, 390), (0, 0, 255), 2)
+        """
+        np.frombuffer(all.depth.depth, np.float32).reshape(all.depth.height, all.depth.width)
+        """
+        cv.imshow('D', depth)
+
+        cv.waitKey(1)
         return True
 
     def __calculate_reward(self):
@@ -177,16 +197,16 @@ class EnvKinova():
     def test(self):
         """ Public test method, that allow to use all the private and public methods
             of the class. Only for testing purposes, will be deleted later """
-        # self.testITER = (self.testITER + 1) % 4
-        # it = self.testITER -1
-        # if it == 2:
-        #     it = 0
-        # # print(it)
-        x = 0 
-        y = 0
-        z = 0
-        wrist = 0
-        grip = 0
+        self.testITER = (self.testITER + 1) % 4
+        it = self.testITER -1
+        if it == 2:
+            it = 0
+        # print(it)
+        x = it 
+        y = it
+        z = it
+        wrist = it
+        grip = it
 
         self.step([x, y, z, wrist, grip])
 
