@@ -60,11 +60,15 @@ class EnvKinova():
         
         # Agent
         self.agent = {
-            "tip":    self.sim.getObjectHandle('tip'),
-            "goal":   self.sim.getObjectHandle('goal'), 
-            "target": self.sim.getObjectHandle('target'),
-            "wrist":  self.sim.getObjectHandle('Actuator6'),
-            "camera": self.sim.getObjectHandle("camera_arm"),
+            "tip":     self.sim.getObjectHandle('tip'),
+            "goal":    self.sim.getObjectHandle('goal'), 
+            "target":  self.sim.getObjectHandle('target'),
+            "wrist":   self.sim.getObjectHandle('Actuator6'),
+            "camera":  self.sim.getObjectHandle("camera_arm"),
+            "fingerL": self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorFingerLeft"), 
+            "fingerR": self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorFingerRight"), 
+            "gripL":   self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorTipLeft"), 
+            "gripR":   self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorTipRight"), 
         }
         self.arm_init_pose = self.sim.getObjectPose(self.agent["tip"], self.rs_zero)
         
@@ -155,29 +159,47 @@ class EnvKinova():
             return None
 
     def __observate(self):
-        """  """
-        imgBuffer, resX, resY = self.sim.getVisionSensorCharImage(self.agent["camera"])
+        """ DOCU """
+
+        """IMAGEN"""
+        
+        # imgBuffer, resX, resY = self.sim.getVisionSensorCharImage(self.agent["camera"])
         # img = np.frombuffer(imgBuffer, dtype=np.uint8).reshape(resY, resX, 3)
-        # print(np.shape(img))
+        # # print(np.shape(img))
         # img = cv.flip(cv.cvtColor(img, cv.COLOR_BGR2RGB), 0)
         # img = cv.rectangle(img, (200, 290), (300, 390), (0, 0, 255), 2)
         # cv.imshow('RBG', img)
 
-
-        depthBuffer = self.sim.getVisionSensorDepthBuffer(self.agent["camera"])
-        print(np.shape(depthBuffer), type(depthBuffer))
-        depth = np.array(depthBuffer, dtype=np.float)
-        depth.reshape(resY, resX)
-        print(depth.shape)
-        # depth = cv.flip(cv.cvtColor(depth, cv.COLOR_BGR2RGB), 0)
+        print("Obteniendo imagen de profundidad")
+        depthBuffer = self.sim.getVisionSensorDepthBuffer(self.agent["camera"]+self.sim.handleflag_depthbuffermeters)
+        # print(np.shape(depthBuffer), type(depthBuffer))
+        depth = np.array(depthBuffer, dtype=np.single).reshape(512, 512)
+        # print(type(depth), depth.shape)
+        depth =  cv.flip(depth, 0)
         depth = cv.rectangle(depth, (200, 290), (300, 390), (0, 0, 255), 2)
-        """
-        np.frombuffer(all.depth.depth, np.float32).reshape(all.depth.height, all.depth.width)
-        """
-        cv.imshow('D', depth)
 
+        cv.imshow('DEPTH', depth)
         cv.waitKey(1)
+
+        """SENSORES DE LA MANO"""
+        # retFL, forceFL, _ = self.sim.readForceSensor(self.agent["fingerL"])
+        # retFR, forceFR, _ = self.sim.readForceSensor(self.agent["fingerR"])
+        # retL, forceL, _ = self.sim.readForceSensor(self.agent["gripL"])
+        # retR, forceR, _ = self.sim.readForceSensor(self.agent["gripR"])
+        # print(f"FR:{forceFR}\nFL:{forceFL}\nR:{forceR}\nL:{forceL}")
+
         return True
+
+    def __reward_and_or_exit(l, r, fl, fr, d):
+        reward = 0
+
+        if LA.norm(np.array(fl)) or LA.norm(np.array(fr)):
+            return
+
+
+
+
+        return exit, reward
 
     def __calculate_reward(self):
         """  """
