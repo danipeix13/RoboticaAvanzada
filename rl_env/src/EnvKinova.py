@@ -65,10 +65,11 @@ class EnvKinova():
             "target":  self.sim.getObjectHandle('target'),
             "wrist":   self.sim.getObjectHandle('Actuator6'),
             "camera":  self.sim.getObjectHandle("camera_arm"),
-            "fingerL": self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorFingerLeft"), 
-            "fingerR": self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorFingerRight"), 
-            "gripL":   self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorTipLeft"), 
-            "gripR":   self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorTipRight"), 
+            "gripL": self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorFingerLeft"), 
+            "gripR": self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorFingerRight"), 
+            "fingerL":   self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorTipLeft"), 
+            "fingerR":   self.sim.getObjectHandle("ROBOTIQ_85_attachForceSensorTipRight"), 
+            "gripper": self.sim.getObjectHandle("ROBOTIQ_85_active1")
         }
         self.arm_init_pose = self.sim.getObjectPose(self.agent["tip"], self.rs_zero)
         
@@ -108,6 +109,8 @@ class EnvKinova():
         self.__move_grip(grip)
         # self.client.step()
         observation = self.__observate()
+        print(observation)
+        # reward, exit = self.__reward_and_or_exit(observation)
         # reward = self.__calculate_reward()
         # done = self.__check_if_done()
         # info = self.__register_info()
@@ -170,35 +173,38 @@ class EnvKinova():
         # img = cv.rectangle(img, (200, 290), (300, 390), (0, 0, 255), 2)
         # cv.imshow('RBG', img)
 
-        print("Obteniendo imagen de profundidad")
-        depthBuffer = self.sim.getVisionSensorDepthBuffer(self.agent["camera"]+self.sim.handleflag_depthbuffermeters)
-        # print(np.shape(depthBuffer), type(depthBuffer))
-        depth = np.array(depthBuffer, dtype=np.single).reshape(512, 512)
-        # print(type(depth), depth.shape)
-        depth =  cv.flip(depth, 0)
-        depth = cv.rectangle(depth, (200, 290), (300, 390), (0, 0, 255), 2)
+        # print("Obteniendo imagen de profundidad")
+        # start = time.time()
+        depthBuffer = self.sim.getVisionSensorDepthBuffer(self.agent["camera"]+self.sim.handleflag_depthbuffermeters, 200, 290, 100, 100)
 
-        cv.imshow('DEPTH', depth)
-        cv.waitKey(1)
+        # end = time.time()
+        # print(end - start)
+        depth = np.array(depthBuffer, dtype=np.single).reshape(100, 100)
+
+        # depth =  cv.flip(depth, 0)
+        # cv.imshow('DEPTH', depth)
+        # cv.waitKey(1)
+
+        d_mean = depth.mean()
 
         """SENSORES DE LA MANO"""
-        # retFL, forceFL, _ = self.sim.readForceSensor(self.agent["fingerL"])
-        # retFR, forceFR, _ = self.sim.readForceSensor(self.agent["fingerR"])
-        # retL, forceL, _ = self.sim.readForceSensor(self.agent["gripL"])
-        # retR, forceR, _ = self.sim.readForceSensor(self.agent["gripR"])
+        retFL, forceFL, _ = self.sim.readForceSensor(self.agent["fingerL"])
+        retFR, forceFR, _ = self.sim.readForceSensor(self.agent["fingerR"])
+        retL, forceL, _ = self.sim.readForceSensor(self.agent["gripL"])
+        retR, forceR, _ = self.sim.readForceSensor(self.agent["gripR"])
         # print(f"FR:{forceFR}\nFL:{forceFL}\nR:{forceR}\nL:{forceL}")
 
-        return True
+        return {"depth": d_mean, "fl": LA.norm(forceFL), "fr": LA.norm(forceFR), "l": LA.norm(forceL), "r": LA.norm(forceR)}
 
-    def __reward_and_or_exit(l, r, fl, fr, d):
+    def __reward_and_or_exit(self, observation):
         reward = 0
 
-        if LA.norm(np.array(fl)) or LA.norm(np.array(fr)):
-            return
-
-
-
-
+        if observation["fl"] > 1 or  observation["fr"] > 1:
+            exit = True
+            reward = -100
+        else:
+            pass
+            
         return exit, reward
 
     def __calculate_reward(self):
@@ -230,8 +236,32 @@ class EnvKinova():
         wrist = it
         grip = it
 
-        self.step([x, y, z, wrist, grip])
+        self.step([x, y, -1, 0, -1])
 
+    def action_space_sample(self):
+        if np.random() < self.EXPLORE:
+            res = self.env.rand_step()
+        else:
+            res = self.env.algo_step()
+        
+        return res
 
+    def algo_step(self):
+        observation = self.__observate()
+        jointPos = self.sim.getJointPosition(self.agent["gripper"])
 
+        if observation["depth"] > 0.17 and jointPos > -0.02:
+            return [0, 0, -1, 0, 0]
 
+        if jointPos < -0.04 or (observation["r"] > 0.8 or observation["l"] > 0.8):
+            return [0, 0, 1, 0, 0]
+
+        return [0, 0, 0, 0, -1]
+
+    def rand_step(self):
+        act = np.random.choice(self.possible_values, size=5)
+        self.step(act)
+
+    def end_of_episode(self):
+        observation = self.__observate()
+        # return observation["fr"] > 1 or observation["fl"] > 1 or 
