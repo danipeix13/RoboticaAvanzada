@@ -37,7 +37,7 @@ class SpecificWorker(GenericWorker):
 
         self.env = EnvKinova()
 
-        self.Period = 100
+        self.Period = 50
         if startup_check:
             self.startup_check()
         else:
@@ -56,8 +56,8 @@ class SpecificWorker(GenericWorker):
     @QtCore.Slot()
     def compute(self):
         print("\nSpecificWorker.compute...")
+
         action = self.env.algo_step()
-        
         self.env.step(action)
 
         return True

@@ -1,6 +1,7 @@
 import sys
 import time
 import math
+import threading
 import cv2 as cv
 import numpy as np
 from numpy import linalg as LA
@@ -80,6 +81,12 @@ class EnvKinova():
         # Test iter index, only for testing purposes, will be deleted later
         self.testITER = 0
 
+        self.observation_data = {}
+        # sensors = [self.agent["gripL"], self.agent["gripR"], self.agent["fingerL"], self.agent["fingerR"]]
+        # params = sensors + [self.observation_data]
+        # self.observator = threading.Thread(name="Observador", target=self.__observate, args=params)
+        # self.observator.start()
+
         # self.client.setStepping(True)
         self.sim.startSimulation()
 
@@ -103,98 +110,28 @@ class EnvKinova():
 
     def step(self, action):
         """ Executes the chosen action, evaluates the post-action state and stores info """
-        pos, wrist, grip = self.__interpretate_action(action)
-        self.__move_arm(pos)
-        self.__move_wrist(wrist)
-        self.__move_grip(grip)
-        # self.client.step()
-        observation = self.__observate()
-        print(observation)
-        # reward, exit = self.__reward_and_or_exit(observation)
-        # reward = self.__calculate_reward()
-        # done = self.__check_if_done()
-        # info = self.__register_info()
-        self.current_time += 1
-        # return observation, reward, done, info
-        pass
-
-    def __move_arm(self, tg_pos):
-        """ Moves the arm to a target position """
-        self.sim.setObjectPose(self.agent["goal"], self.rs_zero, tg_pos)
-        dist = sys.float_info.max
-        while dist > 0.1:
-            pose = self.sim.getObjectPose(self.agent["tip"], self.rs_zero)
-            dist = LA.norm(np.array(pose[:3]) - np.array(tg_pos[:3]))
-
-    def __move_wrist(self, action):
-        """ Rotates the arm's wrist """
-        rot = self.sim.getObjectOrientation(self.agent["tip"], self.rs_zero)
-        posJoint = self.sim.getJointPosition(self.agent['wrist'])
-
-        rot[1] += action / 10
-        posJoint += action / 10
-
-        self.sim.setObjectOrientation(self.agent['tip'], self.rs_zero, rot)
-        self.sim.setJointPosition(self.agent['wrist'], posJoint)
-
-    def __move_grip(self, action):
-        """ Executes the grip's subaction """
-        if action == 1:
-            self.sim.callScriptFunction("open@ROBOTIQ_85", 1)
-        elif action == 0:
-            self.sim.callScriptFunction("stop@ROBOTIQ_85", 1)
-        elif action == -1:
-            self.sim.callScriptFunction("close@ROBOTIQ_85", 1)
-
-    def __interpretate_action(self, action):
-        """ Translates the chosen action to 3 (arm move, wrist rotation and grip) subactions """
-        is_correct = all(list(map(lambda x: x in self.possible_values, action)))
-        if is_correct:
-            current_pose = self.sim.getObjectPose(self.agent["tip"], self.rs_zero)
-            delta_pose = list(map(lambda x: x/1000, action[:3])) + [0, 0, 0, 0]
-            new_pose = [a+b for a,b in list(zip(current_pose,delta_pose))]
-            # print(delta_pose, new_pose)
-            wrist_action, grip_action = action[3], action[4]
-
-            return new_pose, wrist_action, grip_action
+        if self.__interpretate_action(action):
+            self.sim.callScriptFunction("do_step@gen3", 1, action)
         else:
             print("INCORRECT ACTION: values not in [-1, 0, 1]")
             return None
 
+        # self.client.step()
+        # reward, exit = self.__reward_and_or_exit(observation)
+        # reward = self.__calculate_reward()
+        # done = self.__check_if_done()
+        # info = self.__register_info()
+        # return observation, reward, done, info
+
+
+    def __interpretate_action(self, action):
+        """ Translates the chosen action to 3 (arm move, wrist rotation and grip) subactions """
+        return all(list(map(lambda x: x in self.possible_values, action)))
+
     def __observate(self):
         """ DOCU """
 
-        """IMAGEN"""
-        
-        # imgBuffer, resX, resY = self.sim.getVisionSensorCharImage(self.agent["camera"])
-        # img = np.frombuffer(imgBuffer, dtype=np.uint8).reshape(resY, resX, 3)
-        # # print(np.shape(img))
-        # img = cv.flip(cv.cvtColor(img, cv.COLOR_BGR2RGB), 0)
-        # img = cv.rectangle(img, (200, 290), (300, 390), (0, 0, 255), 2)
-        # cv.imshow('RBG', img)
-
-        # print("Obteniendo imagen de profundidad")
-        # start = time.time()
-        depthBuffer = self.sim.getVisionSensorDepthBuffer(self.agent["camera"]+self.sim.handleflag_depthbuffermeters, 200, 290, 100, 100)
-
-        # end = time.time()
-        # print(end - start)
-        depth = np.array(depthBuffer, dtype=np.single).reshape(100, 100)
-
-        # depth =  cv.flip(depth, 0)
-        # cv.imshow('DEPTH', depth)
-        # cv.waitKey(1)
-
-        d_mean = depth.mean()
-
-        """SENSORES DE LA MANO"""
-        retFL, forceFL, _ = self.sim.readForceSensor(self.agent["fingerL"])
-        retFR, forceFR, _ = self.sim.readForceSensor(self.agent["fingerR"])
-        retL, forceL, _ = self.sim.readForceSensor(self.agent["gripL"])
-        retR, forceR, _ = self.sim.readForceSensor(self.agent["gripR"])
-        # print(f"FR:{forceFR}\nFL:{forceFL}\nR:{forceR}\nL:{forceL}")
-
-        return {"depth": d_mean, "fl": LA.norm(forceFL), "fr": LA.norm(forceFR), "l": LA.norm(forceL), "r": LA.norm(forceR)}
+        return self.sim.callScriptFunction("get_observation@gen3", 1) 
 
     def __reward_and_or_exit(self, observation):
         reward = 0
@@ -225,18 +162,19 @@ class EnvKinova():
     def test(self):
         """ Public test method, that allow to use all the private and public methods
             of the class. Only for testing purposes, will be deleted later """
-        self.testITER = (self.testITER + 1) % 4
-        it = self.testITER -1
-        if it == 2:
-            it = 0
-        # print(it)
-        x = it 
-        y = it
-        z = it
-        wrist = it
-        grip = it
+        # self.testITER = (self.testITER + 1) % 4
+        # it = self.testITER -1
+        # if it == 2:
+        #     it = 0
+        # # print(it)
+        # x = it 
+        # y = it
+        # z = it
+        # wrist = it
+        # grip = it
 
-        self.step([x, y, -1, 0, -1])
+        # self.step([x, y, -1, 0, -1])
+        self.step([1, 0, 0, 0, 0])
 
     def action_space_sample(self):
         if np.random() < self.EXPLORE:
@@ -248,12 +186,12 @@ class EnvKinova():
 
     def algo_step(self):
         observation = self.__observate()
-        jointPos = self.sim.getJointPosition(self.agent["gripper"])
+        jointPos = observation["gripper"]
 
-        if observation["depth"] > 0.17 and jointPos > -0.02:
+        if observation["depth"][0] > 0.17 and jointPos > -0.02:
             return [0, 0, -1, 0, 0]
 
-        if jointPos < -0.04 or (observation["r"] > 0.8 or observation["l"] > 0.8):
+        if jointPos < -0.04 or (LA.norm(np.array(observation["gripR"][1])) > 0.8 or LA.norm(np.array(observation["gripL"][1])) > 0.8):
             return [0, 0, 1, 0, 0]
 
         return [0, 0, 0, 0, -1]
