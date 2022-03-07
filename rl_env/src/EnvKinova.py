@@ -81,11 +81,7 @@ class EnvKinova():
         # Test iter index, only for testing purposes, will be deleted later
         self.testITER = 0
 
-        self.observation_data = {}
-        # sensors = [self.agent["gripL"], self.agent["gripR"], self.agent["fingerL"], self.agent["fingerR"]]
-        # params = sensors + [self.observation_data]
-        # self.observator = threading.Thread(name="Observador", target=self.__observate, args=params)
-        # self.observator.start()
+        self.EXPLORE = 0.05
 
         # self.client.setStepping(True)
         self.sim.startSimulation()
@@ -102,10 +98,6 @@ class EnvKinova():
         self.move_arm(self.arm_init_pose)
         self.sim.setObjectPose(self.block, self.rs_zero, self.block_init_pose)
         self.current_time = 0
-        pass
-
-    def action_space_sample(self):
-        """ TODO """
         pass
 
     def step(self, action):
@@ -177,10 +169,10 @@ class EnvKinova():
         self.step([1, 0, 0, 0, 0])
 
     def action_space_sample(self):
-        if np.random() < self.EXPLORE:
-            res = self.env.rand_step()
+        if np.random.rand() < self.EXPLORE:
+            res = self.rand_step()
         else:
-            res = self.env.algo_step()
+            res = self.algo_step()
         
         return res
 
@@ -188,18 +180,25 @@ class EnvKinova():
         observation = self.__observate()
         jointPos = observation["gripper"]
 
+        # print("right", np.array(observation["gripR"][1]), LA.norm(np.array(observation["gripR"][1])))
+        # print("left", np.array(observation["gripL"][1]), LA.norm(np.array(observation["gripL"][1])))
+
         if observation["depth"][0] > 0.17 and jointPos > -0.02:
             return [0, 0, -1, 0, 0]
 
-        if jointPos < -0.04 or (LA.norm(np.array(observation["gripR"][1])) > 0.8 or LA.norm(np.array(observation["gripL"][1])) > 0.8):
+        limit = 0.3
+        if jointPos < -0.04 or LA.norm(np.array(observation["gripR"][1])) > limit or LA.norm(np.array(observation["gripL"][1])) > limit:
             return [0, 0, 1, 0, 0]
-
+            
         return [0, 0, 0, 0, -1]
 
     def rand_step(self):
-        act = np.random.choice(self.possible_values, size=5)
-        self.step(act)
+        act = np.random.choice(self.possible_values, size=5).tolist()
+        return act
 
     def end_of_episode(self):
         observation = self.__observate()
         # return observation["fr"] > 1 or observation["fl"] > 1 or 
+
+
+    
