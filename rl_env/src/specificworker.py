@@ -60,7 +60,11 @@ class SpecificWorker(GenericWorker):
         # print("\nSpecificWorker.compute...")
 
         action = self.env.action_space_sample()
-        self.env.step(action)
+
+        observation, _, exit, _ = self.env.step(action)
+
+        if exit:
+            self.env.reset()
 
         return True
 

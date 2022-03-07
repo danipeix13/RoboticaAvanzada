@@ -4,5 +4,6 @@ Component rl_env
     {
     };
     language python;
+    gui Qt(QWidget);
 };
 
