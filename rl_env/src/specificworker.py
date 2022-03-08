@@ -24,7 +24,11 @@ from PySide2.QtCore import QTimer
 from rich.console import Console
 import interfaces as ifaces
 from genericworker import *
-from EnvKinova import *
+# from EnvKinova import *
+
+from EnvKinova_gym import *
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3 import PPO
 
 sys.path.append('/opt/robocomp/lib')
 console = Console(highlight=False)
@@ -35,11 +39,16 @@ class SpecificWorker(GenericWorker):
         super(SpecificWorker, self).__init__(proxy_map)
         print("SpecificWorker.__init__")
 
-        self.env = EnvKinova()
-
+        self.env = EnvKinova_gym()
+        # self.model = PPO("MlpPolicy", self.env, learning_rate=1e-2, verbose=1)
         time.sleep(1)
+        # check_env(self.env, warn=True)
 
-        self.Period = 50
+        # self.model.learn(total_timesteps=30000)
+        
+        # self.obs = self.env.reset()
+
+        self.Period = 250
         if startup_check:
             self.startup_check()
         else:
@@ -59,13 +68,16 @@ class SpecificWorker(GenericWorker):
     def compute(self):
         # print("\nSpecificWorker.compute...")
 
-        action = self.env.action_space_sample()
+        # action, _states = self.model.predict(self.obs)
+        # self.obs, rewards, dones, info = self.env.step(action)
 
-        observation, _, exit, _ = self.env.step(action)
+        # action = self.env.action_space_sample()
 
-        if exit:
-            self.env.reset()
+        # observation, _, exit, _ = self.env.step(action)
 
+        # if exit:
+        #     self.env.reset()
+        self.env.test()
         return True
 
     def startup_check(self):
