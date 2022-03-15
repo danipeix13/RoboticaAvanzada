@@ -40,14 +40,12 @@ class SpecificWorker(GenericWorker):
         print("SpecificWorker.__init__")
 
         self.env = EnvKinova_gym()
-        # self.model = PPO("MlpPolicy", self.env, learning_rate=1e-2, verbose=1)
+        self.model = PPO("MlpPolicy", self.env, learning_rate=1e-2, verbose=1)
         time.sleep(1)
-        # check_env(self.env, warn=True)
-
-        # self.model.learn(total_timesteps=30000)
+        check_env(self.env, warn=True)
+        self.model.learn(total_timesteps=30000)
         
-        # self.obs = self.env.reset()
-
+        self.obs = self.env.reset()
         self.Period = 250
         if startup_check:
             self.startup_check()
@@ -66,17 +64,15 @@ class SpecificWorker(GenericWorker):
 
     @QtCore.Slot()
     def compute(self):
-        # print("\nSpecificWorker.compute...")
+        print("\nSpecificWorker.compute...")
 
-        # action, _states = self.model.predict(self.obs)
-        # self.obs, rewards, dones, info = self.env.step(action)
+        action, _ = self.model.predict(self.obs)
+        self.obs, reward, done, info = self.env.step(action)
+        print('obs=', self.obs, 'reward=', reward, 'done=', done)
+        action = self.env.action_space_sample()
 
-        # action = self.env.action_space_sample()
-
-        # observation, _, exit, _ = self.env.step(action)
-
-        # if exit:
-        #     self.env.reset()
+        if done:
+            self.env.reset()
         self.env.test()
         return True
 

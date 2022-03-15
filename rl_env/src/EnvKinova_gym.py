@@ -34,7 +34,7 @@ class EnvKinova_gym(gym.Env):
         self.client = RemoteAPIClient()
         self.sim = self.client.getObject('sim')
 
-        self.action_space = [0, 0, 0, 0, 0]
+        # self.action_space = [0, 0, 0, 0, 0]
         self.possible_values = [-1, 0, 1]
         self.max_steps = 200
         self.current_step = 0
@@ -75,46 +75,59 @@ class EnvKinova_gym(gym.Env):
         self.SIZE = 20
         self.EXPLORE = 0.45
 
-        # time series
-        plt.ion()
-        self.visible = 120
-        self.dopening = deque(np.zeros(self.visible), self.visible)
-        self.ddistance = deque(np.zeros(self.visible), self.visible)
-        self.dforce_left = deque(np.zeros(self.visible), self.visible)
-        self.dforce_right = deque(np.zeros(self.visible), self.visible)
-        self.dforce_left_tip = deque(np.zeros(self.visible), self.visible)
-        self.dforce_right_tip = deque(np.zeros(self.visible), self.visible)
-        self.dx = deque(np.zeros(self.visible), self.visible)
-        self.data_length = np.linspace(0, 121, num=120)
+        # # time series
+        # plt.ion()
+        # self.visible = 120
+        # self.dopening = deque(np.zeros(self.visible), self.visible)
+        # self.ddistance = deque(np.zeros(self.visible), self.visible)
+        # self.dforce_left = deque(np.zeros(self.visible), self.visible)
+        # self.dforce_right = deque(np.zeros(self.visible), self.visible)
+        # self.dforce_left_tip = deque(np.zeros(self.visible), self.visible)
+        # self.dforce_right_tip = deque(np.zeros(self.visible), self.visible)
+        # self.dx = deque(np.zeros(self.visible), self.visible)
+        # self.data_length = np.linspace(0, 121, num=120)
 
-        # plt
-        self.fig = plt.figure(figsize=(8, 3))
-        self.ah1 = self.fig.add_subplot()
-        plt.margins(x=0.001)
-        self.ah1.set_ylabel("Gripper", fontsize=14)
-        self.opening, = self.ah1.plot(self.dx, self.dopening, color='yellow', label="Closing (x10)", linewidth=1.0)
-        self.distance, = self.ah1.plot(self.dx, self.ddistance, color='orange', label="Distance (x10)", linewidth=1.0)
-        self.force_left, = self.ah1.plot(self.dx, self.dforce_left, color='red', label="L-Force", linewidth=1.0)
-        self.force_right, = self.ah1.plot(self.dx, self.dforce_right, color='magenta', label="R-Force", linewidth=1.0)
-        self.force_left_tip, = self.ah1.plot(self.dx, self.dforce_left_tip, color='blue', label="LT-Force", linewidth=1.0)
-        self.force_right_tip, = self.ah1.plot(self.dx, self.dforce_right_tip, color='green', label="RT-Force", linewidth=1.0)
-        self.ah1.legend(loc="upper right", fontsize=12, fancybox=True, framealpha=0.5)
-        self.x_data = 0
+        # # plt
+        # self.fig = plt.figure(figsize=(8, 3))
+        # self.ah1 = self.fig.add_subplot()
+        # plt.margins(x=0.001)
+        # self.ah1.set_ylabel("Gripper", fontsize=14)
+        # self.opening, = self.ah1.plot(self.dx, self.dopening, color='yellow', label="Closing (x10)", linewidth=1.0)
+        # self.distance, = self.ah1.plot(self.dx, self.ddistance, color='orange', label="Distance (x10)", linewidth=1.0)
+        # self.force_left, = self.ah1.plot(self.dx, self.dforce_left, color='red', label="L-Force", linewidth=1.0)
+        # self.force_right, = self.ah1.plot(self.dx, self.dforce_right, color='magenta', label="R-Force", linewidth=1.0)
+        # self.force_left_tip, = self.ah1.plot(self.dx, self.dforce_left_tip, color='blue', label="LT-Force", linewidth=1.0)
+        # self.force_right_tip, = self.ah1.plot(self.dx, self.dforce_right_tip, color='green', label="RT-Force", linewidth=1.0)
+        # self.ah1.legend(loc="upper right", fontsize=12, fancybox=True, framealpha=0.5)
+        # self.x_data = 0
 
 
         # ACTION SPACE
-        self.action_space = spaces.MultiDiscrete([3])
-        self.observation_space = spaces.Box(low=-10.0, high=10.0, shape=(1,), dtype=np.float32)
-        self.goal = 0.024
+        self.action_space = spaces.MultiDiscrete([3, 3]) # 0:-, 1:nop, 2:+ --> -1
+        self.observation_space = spaces.Box(low=-10.0, high=10.0, shape=(2,), dtype=np.float32)
+        self.goal = [-0.13, -0.45]
+
         # self.client.setStepping(True)
         self.sim.startSimulation()
 
-    def close(self):
-        """ Stops the simulation """
-        self.sim.stopSimulation()
-        self.sim.setInt32Param(self.sim.intparam_idle_fps, self.defaultIdleFps)
-        # self.sim.closeScene() # NO FUNCIONA CORRECTAMENTE: ¿no soportada?
-        print('Program ended')
+    def step(self, action):
+        """ Executes the chosen action, evaluates the post-action state and stores info """
+
+        sim_act = [int(action[0]-1), int(action[1]-1), 0, 0, 0]
+        if self.__interpretate_action(sim_act):
+            self.sim.callScriptFunction("do_step@gen3", 1, sim_act)
+        else:
+            print("INCORRECT ACTION: values not in [-1, 0, 1]")
+            return None
+
+        observation = self.__observate()
+        exit, reward = self.__reward_and_or_exit(observation)
+        self.current_step += 1
+        # print (self.current_step, observation["pos"][0][0], action[2], reward)
+        
+        print('obs=', observation["pos"][0][:2], 'reward=', reward, 'exit=', exit)
+        return np.array(observation["pos"][0][:2], dtype=np.float32), reward, exit, {}
+
 
     def reset(self):
         """ Moves the arm and the block to their initial positions, also resets the time """
@@ -130,34 +143,19 @@ class EnvKinova_gym(gym.Env):
         
         self.current_step= 0
         obs = self.__observate()
-        ret = np.array([obs["pos"][0][0]], dtype=np.float32)
+        ret = np.array(obs["pos"][0][:2], dtype=np.float32)
         print(ret.shape)
         return ret
 
-    def step(self, action):
-        """ Executes the chosen action, evaluates the post-action state and stores info """
-        # action = [int(action[0] - 1), 0, 0, 0, 0]
-        # print(action, type(action[2]))
-        if self.__interpretate_action(action):
-            self.sim.callScriptFunction("do_step@gen3", 1, action)
-        else:
-            print("INCORRECT ACTION: values not in [-1, 0, 1]")
-            return None
-        # observation = self.__observate()
-        # exit, reward = self.__reward_and_or_exit(observation)
+    def close(self):
+        """ Stops the simulation """
+        self.sim.stopSimulation()
+        self.sim.setInt32Param(self.sim.intparam_idle_fps, self.defaultIdleFps)
+        # self.sim.closeScene() # NO FUNCIONA CORRECTAMENTE: ¿no soportada?
+        print('Program ended')
 
 
-        # self.client.step()
-        # reward, exit = self.__reward_and_or_exit(observation)
-        # reward = self.__calculate_reward()
-        # done = self.__check_if_done()
-        # info = self.__register_info()
-        self.current_step += 1
-        # print (self.current_step, observation["pos"][0][0], action[2], reward)
-        
-        
-        # return np.array([observation["pos"][0][0]], dtype=np.float32), reward, exit, {}
-
+############################################################################################################
 
     def __interpretate_action(self, action):
         """ Translates the chosen action to 3 (arm move, wrist rotation and grip) subactions """
@@ -174,52 +172,20 @@ class EnvKinova_gym(gym.Env):
         return obs
 
     def __reward_and_or_exit(self, observation):
-        # reward = 0
-        # limit = 1
-        # print(LA.norm(observation["fingerL"][1]), LA.norm(observation["fingerR"][1]))
-        # exit = self.current_step >= self.max_steps
-        # exit = exit or LA.norm(observation["fingerL"][1]) > limit or LA.norm(observation["fingerR"][1]) > limit
-        # exit = exit or (self.arm_init_pose[2] < observation["pos"][0][2])
-        # reward = 1.0/
-        dist = abs(self.goal - observation["pos"][0][0])
+        dist = LA.norm(np.array(self.goal) - np.array(observation["pos"][0][:2]))
 
-        # print (dist)
+        print (dist)
 
-        reward = 10000 if dist < 0.01 else 100/dist
-
-        exit = reward == 10000 or self.current_step > 300
-
-        return exit, reward
-
-    def __calculate_reward(self):
-        """  """
-        # return reward
-        pass
-
-    def __check_if_done(self):
-        """  """
-        # return done
-        pass
-
-    def __register_info(self):
-        """  """
-        # return info
-        pass
+        if dist < 0.01:
+            return True, 10000
+        else:
+            exit = self.current_step > 300
+            return exit, 10/dist - 100
 
     def test(self):
         """ Public test method, that allow to use all the private and public methods
             of the class. Only for testing purposes, will be deleted later """
-        # self.step(self.action_space_sample())
-        # self.algo_step()
-
-        for i in range(5):
-            action = [0,0,0,0,0]
-            for a in [-1, 1]:
-                action[i] = a
-                for x in range(5):
-                    self.step(action)   
-                    print (action)
-                    time.sleep(.25)
+        pass
 
     def action_space_sample(self):
         if np.random.rand() < self.EXPLORE:
@@ -254,38 +220,38 @@ class EnvKinova_gym(gym.Env):
         observation = self.__observate()
         # return observation["fr"] > 1 or observation["fl"] > 1 or 
 
-    def draw_gripper_series(self, gdata):
-        # print(gdata)
-        # update data
-        # self.dopening.extend([gdata["gripper"]])
-        # self.ddistance.extend(gdata["depth"])
-        self.dforce_right.extend([LA.norm(gdata["fingerR"][1]) * 10])
-        self.dforce_left.extend([LA.norm(gdata["fingerL"][1]) * 10])
-        self.dforce_left_tip.extend([LA.norm(gdata["gripL"][1])*10])
-        self.dforce_right_tip.extend([LA.norm(gdata["gripR"][1])*10])
-        self.dx.extend([self.x_data])
+    # def draw_gripper_series(self, gdata):
+    #     # print(gdata)
+    #     # update data
+    #     # self.dopening.extend([gdata["gripper"]])
+    #     # self.ddistance.extend(gdata["depth"])
+    #     self.dforce_right.extend([LA.norm(gdata["fingerR"][1]) * 10])
+    #     self.dforce_left.extend([LA.norm(gdata["fingerL"][1]) * 10])
+    #     self.dforce_left_tip.extend([LA.norm(gdata["gripL"][1])*10])
+    #     self.dforce_right_tip.extend([LA.norm(gdata["gripR"][1])*10])
+    #     self.dx.extend([self.x_data])
 
-        # update plot
-        self.opening.set_ydata(self.dopening)
-        self.opening.set_xdata(self.dx)
-        self.distance.set_ydata(self.ddistance)
-        self.distance.set_xdata(self.dx)
-        self.force_left.set_ydata(self.dforce_left)
-        self.force_left.set_xdata(self.dx)
-        self.force_right.set_ydata(self.dforce_right)
-        self.force_right.set_xdata(self.dx)
-        self.force_left_tip.set_ydata(self.dforce_left_tip)
-        self.force_left_tip.set_xdata(self.dx)
-        self.force_right_tip.set_ydata(self.dforce_right_tip)
-        self.force_right_tip.set_xdata(self.dx)
+    #     # update plot
+    #     self.opening.set_ydata(self.dopening)
+    #     self.opening.set_xdata(self.dx)
+    #     self.distance.set_ydata(self.ddistance)
+    #     self.distance.set_xdata(self.dx)
+    #     self.force_left.set_ydata(self.dforce_left)
+    #     self.force_left.set_xdata(self.dx)
+    #     self.force_right.set_ydata(self.dforce_right)
+    #     self.force_right.set_xdata(self.dx)
+    #     self.force_left_tip.set_ydata(self.dforce_left_tip)
+    #     self.force_left_tip.set_xdata(self.dx)
+    #     self.force_right_tip.set_ydata(self.dforce_right_tip)
+    #     self.force_right_tip.set_xdata(self.dx)
 
-        # set axes
-        self.ah1.set_ylim(0, 10)
-        self.ah1.set_xlim(self.x_data-self.visible, self.x_data)
+    #     # set axes
+    #     self.ah1.set_ylim(0, 10)
+    #     self.ah1.set_xlim(self.x_data-self.visible, self.x_data)
 
-        # control speed of moving time-series
-        self.x_data += 1
+    #     # control speed of moving time-series
+    #     self.x_data += 1
 
-        self.fig.canvas.draw()
-        # self.fig.canvas.flush_events()
+    #     self.fig.canvas.draw()
+    #     # self.fig.canvas.flush_events()
     
