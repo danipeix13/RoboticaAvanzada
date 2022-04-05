@@ -40,10 +40,10 @@ class SpecificWorker(GenericWorker):
         print("SpecificWorker.__init__")
 
         self.env = EnvKinova_gym()
-        self.model = PPO("MlpPolicy", self.env, learning_rate=1e-2, verbose=1)
+        self.model = PPO("MlpPolicy", self.env, learning_rate=5e-3, verbose=1)
         time.sleep(1)
         check_env(self.env, warn=True)
-        self.model.learn(total_timesteps=30000)
+        self.model.learn(total_timesteps=50000)
         
         self.obs = self.env.reset()
         self.Period = 250

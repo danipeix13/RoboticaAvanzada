@@ -4,6 +4,7 @@ import time
 import math
 import threading
 import cv2 as cv
+from cv2 import sqrt
 import numpy as np
 from collections import deque
 from numpy import dtype, linalg as LA
@@ -103,9 +104,9 @@ class EnvKinova_gym(gym.Env):
 
 
         # ACTION SPACE
-        self.action_space = spaces.MultiDiscrete([3, 3]) # 0:-, 1:nop, 2:+ --> -1
-        self.observation_space = spaces.Box(low=-10.0, high=10.0, shape=(2,), dtype=np.float32)
-        self.goal = [-0.13, -0.45]
+        self.action_space = spaces.MultiDiscrete([3, 3, 3, 3]) # 0:-, 1:nop, 2:+ --> -1
+        self.observation_space = spaces.Box(low=-10.0, high=10.0, shape=(3,), dtype=np.float32)
+        self.goal = [0, 0, 0]
 
         # self.client.setStepping(True)
         self.sim.startSimulation()
@@ -113,7 +114,7 @@ class EnvKinova_gym(gym.Env):
     def step(self, action):
         """ Executes the chosen action, evaluates the post-action state and stores info """
 
-        sim_act = [int(action[0]-1), int(action[1]-1), 0, 0, 0]
+        sim_act = [int(action[0]-1), int(action[1]-1), int(action[2]-1), 0, int(action[3]-1)]
         if self.__interpretate_action(sim_act):
             self.sim.callScriptFunction("do_step@gen3", 1, sim_act)
         else:
@@ -125,8 +126,12 @@ class EnvKinova_gym(gym.Env):
         self.current_step += 1
         # print (self.current_step, observation["pos"][0][0], action[2], reward)
         
-        print('obs=', observation["pos"][0][:2], 'reward=', reward, 'exit=', exit)
-        return np.array(observation["pos"][0][:2], dtype=np.float32), reward, exit, {}
+        if exit:
+            with open('output.txt', 'a') as file:  # Use file to refer to the file object
+                file.write(str(reward) + "\n")
+        # print('obs=', observation["pos"][0][:2], 'reward=', reward, 'exit=', exit)
+        # print("REWARD: ", reward)
+        return np.array([observation["dist_x"], observation["dist_y"], observation["dist_z"]], dtype=np.float32), reward, exit, {}
 
 
     def reset(self):
@@ -139,12 +144,15 @@ class EnvKinova_gym(gym.Env):
         time.sleep(.1)
         self.sim.startSimulation()
         time.sleep(.5)
-        self.sim.callScriptFunction("move_to_random_x@gen3", 1)
-        
+        aux_goal = self.sim.callScriptFunction("move_to_random_x@gen3", 1)
+        self.goal = aux_goal[:3]
+        # print (self.goal)
+
         self.current_step= 0
         obs = self.__observate()
-        ret = np.array(obs["pos"][0][:2], dtype=np.float32)
-        print(ret.shape)
+        ret = np.array(obs["pos"][0][:3], dtype=np.float32)
+        # print(ret.shape)
+
         return ret
 
     def close(self):
@@ -164,23 +172,31 @@ class EnvKinova_gym(gym.Env):
     def __observate(self):
         """ DOCU """
         obs = {"pos": [[0, 0, 0]]}
-        try:
-            obs = self.sim.callScriptFunction("get_observation@gen3", 1) 
-        except:
-            print("EXPLOTA :(")
+        
+        obs = self.sim.callScriptFunction("get_observation@gen3", 1) 
+        
         # self.draw_gripper_series(obs)
         return obs
 
     def __reward_and_or_exit(self, observation):
-        dist = LA.norm(np.array(self.goal) - np.array(observation["pos"][0][:2]))
+        if LA.norm(np.array(observation["fingerL"][1])) > .15:
+            return True, -1000
+        if LA.norm(np.array(observation["fingerR"][1])) > .15:
+            return True, -1000
 
-        print (dist)
+        # TODO: tip
+        
+        dist = math.sqrt(observation["dist_x"]**2 + observation["dist_y"]**2 + observation["dist_z"]**2)
 
-        if dist < 0.01:
+        # print("GRIPPER: ", observation["gripper"])
+
+        if dist > 0.1:
+            return True, -1000
+        elif dist < 0.008:
             return True, 10000
         else:
-            exit = self.current_step > 300
-            return exit, 10/dist - 100
+            exit = self.current_step >= 300
+            return exit, -dist*10
 
     def test(self):
         """ Public test method, that allow to use all the private and public methods
