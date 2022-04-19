@@ -32,25 +32,15 @@ Ice.loadSlice("-I ./src/ --all ./src/CommonBehavior.ice")
 import RoboCompCommonBehavior
 
 
-try:
-    from ui_mainUI import *
-except:
-    print("Can't import UI file. Did you run 'make'?")
-    sys.exit(-1)
 
 
-
-class GenericWorker(QtWidgets.QWidget):
+class GenericWorker(QtCore.QObject):
 
     kill = QtCore.Signal()
 
     def __init__(self, mprx):
         super(GenericWorker, self).__init__()
 
-
-        self.ui = Ui_guiDlg()
-        self.ui.setupUi(self)
-        self.show()
 
         self.mutex = QtCore.QMutex(QtCore.QMutex.Recursive)
         self.Period = 30

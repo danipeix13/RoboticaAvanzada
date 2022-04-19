@@ -26,9 +26,7 @@ import interfaces as ifaces
 from genericworker import *
 # from EnvKinova import *
 
-from EnvKinova_gym import *
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3 import PPO
+from EnvKinovaQ import *
 
 sys.path.append('/opt/robocomp/lib')
 console = Console(highlight=False)
@@ -39,13 +37,6 @@ class SpecificWorker(GenericWorker):
         super(SpecificWorker, self).__init__(proxy_map)
         print("SpecificWorker.__init__")
 
-        self.env = EnvKinova_gym()
-        self.model = PPO("MlpPolicy", self.env, learning_rate=5e-3, verbose=1)
-        time.sleep(1)
-        check_env(self.env, warn=True)
-        self.model.learn(total_timesteps=50000)
-        
-        self.obs = self.env.reset()
         self.Period = 250
         if startup_check:
             self.startup_check()
@@ -55,7 +46,6 @@ class SpecificWorker(GenericWorker):
 
     def __del__(self):
         print("SpecificWorker.__del__")
-        self.env.close()
         pass
 
     def setParams(self, params):
@@ -65,15 +55,6 @@ class SpecificWorker(GenericWorker):
     @QtCore.Slot()
     def compute(self):
         print("\nSpecificWorker.compute...")
-
-        action, _ = self.model.predict(self.obs)
-        self.obs, reward, done, info = self.env.step(action)
-        print('obs=', self.obs, 'reward=', reward, 'done=', done)
-        action = self.env.action_space_sample()
-
-        if done:
-            self.env.reset()
-        self.env.test()
         return True
 
     def startup_check(self):

@@ -1,3 +1,4 @@
+import random
 from re import A
 import sys
 import time
@@ -104,9 +105,9 @@ class EnvKinova_gym(gym.Env):
 
 
         # ACTION SPACE
-        self.action_space = spaces.MultiDiscrete([3, 3, 3, 3]) # 0:-, 1:nop, 2:+ --> -1
-        self.observation_space = spaces.Box(low=-10.0, high=10.0, shape=(3,), dtype=np.float32)
-        self.goal = [0, 0, 0]
+        self.action_space = spaces.MultiDiscrete([3, 3]) # 0:-, 1:nop, 2:+ --> -1
+        self.observation_space = spaces.Box(low=-10.0, high=10.0, shape=(2,), dtype=np.float32)
+        self.goal = [0, 0]
 
         # self.client.setStepping(True)
         self.sim.startSimulation()
@@ -114,7 +115,7 @@ class EnvKinova_gym(gym.Env):
     def step(self, action):
         """ Executes the chosen action, evaluates the post-action state and stores info """
 
-        sim_act = [int(action[0]-1), int(action[1]-1), int(action[2]-1), 0, int(action[3]-1)]
+        sim_act = [int(action[0]-1), int(action[1]-1), 0, 0, 0]
         if self.__interpretate_action(sim_act):
             self.sim.callScriptFunction("do_step@gen3", 1, sim_act)
         else:
@@ -131,7 +132,7 @@ class EnvKinova_gym(gym.Env):
                 file.write(str(reward) + "\n")
         # print('obs=', observation["pos"][0][:2], 'reward=', reward, 'exit=', exit)
         # print("REWARD: ", reward)
-        return np.array([observation["dist_x"], observation["dist_y"], observation["dist_z"]], dtype=np.float32), reward, exit, {}
+        return np.array([observation["dist_x"], observation["dist_y"]], dtype=np.float32), reward, exit, {}
 
 
     def reset(self):
@@ -145,12 +146,12 @@ class EnvKinova_gym(gym.Env):
         self.sim.startSimulation()
         time.sleep(.5)
         aux_goal = self.sim.callScriptFunction("move_to_random_x@gen3", 1)
-        self.goal = aux_goal[:3]
+        self.goal = aux_goal[:2]
         # print (self.goal)
 
         self.current_step= 0
         obs = self.__observate()
-        ret = np.array(obs["pos"][0][:3], dtype=np.float32)
+        ret = np.array(obs["pos"][0][:2], dtype=np.float32)
         # print(ret.shape)
 
         return ret
@@ -179,6 +180,40 @@ class EnvKinova_gym(gym.Env):
         return obs
 
     def __reward_and_or_exit(self, observation):
+        reward = 0
+        exit = False
+
+        #No alejarse
+        if math.sqrt(observation["dist_x"]**2 + observation["dist_y"]**2) > 0.1:
+            return True, -10000
+
+        # Posición en XY
+        dist = math.sqrt(observation["dist_x"]**2 + observation["dist_y"]**2)
+        reward += (1 - self.__normalize(dist, 0, 0.1)) * 100
+        if dist < 0.005:
+            reward += 10000
+
+        # Pinza abierta
+        reward += (1 - self.__normalize(observation["gripper"], -0.002, -0.01)) * 10
+
+        # No chocarse
+        # if LA.norm(np.array(observation["fingerL"][1])) > .006 or LA.norm(np.array(observation["fingerR"][1])) > .006:
+        #     reward += -100
+        #     exit = True
+
+        # Posición Z
+        # reward += (1 - self.__normalize(observation["dist_z"], 0, 0.1)) * 100
+
+        # # Pinza cerrada
+        # if len(observation["gripL"]) == 3:
+        #     if LA.norm(np.array(observation["gripL"][1])) > .15 or LA.norm(np.array(observation["gripR"][1])) > .15:
+        #         reward += 10
+
+        # print("Reward: ", reward, " exit: ", exit, "\t", random.random(), "\t", random.random(), "\t", random.random(), "\t", random.random())
+
+        return exit, reward
+        
+        '''
         if LA.norm(np.array(observation["fingerL"][1])) > .15:
             return True, -1000
         if LA.norm(np.array(observation["fingerR"][1])) > .15:
@@ -197,6 +232,10 @@ class EnvKinova_gym(gym.Env):
         else:
             exit = self.current_step >= 300
             return exit, -dist*10
+        '''
+
+    def __normalize(self, x, min_val, max_val):
+        return ((x - min_val) / (max_val + min_val))
 
     def test(self):
         """ Public test method, that allow to use all the private and public methods
