@@ -64,9 +64,7 @@ def qLearning(env, num_episodes, discount_factor = 1.0, alpha = 0.6, epsilon = 0
 
 			# choose action according to
 			# the probability distribution
-			action = np.random.choice(np.arange(
-					len(action_probabilities)),
-					p = action_probabilities)
+			action = np.random.choice(np.arange(len(action_probabilities)), p = action_probabilities)
 
 			# take action and get reward, transit to next state
 			next_state, reward, done, _ = env.step(action)

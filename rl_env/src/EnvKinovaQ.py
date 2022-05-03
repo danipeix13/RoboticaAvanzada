@@ -90,6 +90,6 @@ def qLearning(env, num_episodes, discount_factor = 1.0, alpha = 0.6, epsilon = 0
 	
 	return Q, stats
 
-Q, stats = qLearning(env, 1000)
+Q, stats = qLearning(env, 1000) 
 plotting.plot_episode_stats(stats)
 
