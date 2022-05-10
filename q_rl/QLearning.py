@@ -3,12 +3,12 @@ from EnvKinova_gym import EnvKinova_gym
 
 env = EnvKinova_gym()
 print(env.observation_space)
-n_observations = env.observation_space.n
-n_actions = env.action_space.n
+n_observations = env.n
+n_actions = np.prod(env.action_space.shape)
 
 #Initialize the Q-table to 0
 Q_table = np.zeros((n_observations,n_actions))
-print(Q_table)
+print("QTABLE", Q_table)
 
 # CONSTANTS
 N_EPISODES = 10000
@@ -53,6 +53,7 @@ for e in range(N_EPISODES):
         if done:
             break
         current_state = next_state
+
     #We update the exploration proba using exponential decay formula 
     exploration_proba = max(MIN_EXPLORATION_PROB, np.exp(-DECAY*e))
     total_rewards_episode.append(total_episode_reward)

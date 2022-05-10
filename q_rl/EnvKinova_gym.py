@@ -35,7 +35,7 @@ class EnvKinova_gym(gym.Env):
         action = self.action_space.sample()
         observation, _, done, _ = self.step(action)
         assert not done
-        self.observation_space = U.set_observation_space(observation)
+        self.observation_space, self.n = U.set_observation_space(observation)
         self.goal = [0, 0]
 
     def step(self, action):
@@ -62,7 +62,10 @@ class EnvKinova_gym(gym.Env):
     def reset(self):
         print("RESET", "STEP:", self.current_step)
         self.sim.stopSimulation()
+        while(self.sim.getSimulationState != self.sim.simulation_stopped):
+            time.sleep(0.1)
         self.sim.startSimulation()
+        time.sleep(2)
         aux_goal = self.sim.callScriptFunction("move_to_random_x@gen3", 1)
         self.goal = aux_goal[:2]
 
