@@ -61,13 +61,15 @@ class EnvKinova_gym(gym.Env):
 
     def reset(self):
         print("RESET", "STEP:", self.current_step)
-        self.sim.stopSimulation()
-        while(self.sim.getSimulationState != self.sim.simulation_stopped):
-            time.sleep(0.1)
-        self.sim.startSimulation()
-        time.sleep(2)
-        aux_goal = self.sim.callScriptFunction("move_to_random_x@gen3", 1)
-        self.goal = aux_goal[:2]
+        # self.sim.stopSimulation()
+        # while(self.sim.getSimulationState != self.sim.simulation_stopped):
+        #     time.sleep(0.1)
+        # self.sim.startSimulation()
+        # time.sleep(2)
+        self.goal = self.sim.callScriptFunction("reset@gen3", 1) 
+        '''Implementar funcion en el lua. Añadir el move to raandom también, dentro de esa función'''
+        # aux_goal = self.sim.callScriptFunction("move_to_random_x@gen3", 1)
+        # self.goal = aux_goal[:2]
 
         self.current_step = 0
         obs = self.__observate()
