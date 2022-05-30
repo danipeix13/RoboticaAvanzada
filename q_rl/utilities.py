@@ -47,6 +47,10 @@ def __convert_observation_to_space(observation):
     else:
         raise NotImplementedError(type(observation), observation)
 
-    # print(space)
-
     return space
+
+def map_observation2state(observ):
+    state = 0
+    for item in observ.values():
+        state += item
+    return int(state)

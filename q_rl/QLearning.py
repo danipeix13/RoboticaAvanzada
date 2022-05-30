@@ -1,5 +1,6 @@
 import numpy as np
 from EnvKinova_gym import EnvKinova_gym
+import utilities as U
 
 env = EnvKinova_gym()
 print(env.observation_space)
@@ -25,6 +26,7 @@ total_rewards_episode = []
 for e in range(N_EPISODES):
     #we initialize the first state of the episode
     current_state = env.reset()
+    current_state = U.map_observation2state(current_state)
     done = False
     
     #sum the rewards that the agent gets from the environment
@@ -45,6 +47,7 @@ for e in range(N_EPISODES):
         # The environment runs the chosen action and returns
         # the next state, a reward and true if the epiosed is ended.
         next_state, reward, done, _ = env.step(action)
+        next_state = U.map_observation2state(next_state)
         
         # We update our Q-table using the Q-learning iteration
         Q_table[current_state, action] = (1 - LR) * Q_table[current_state, action] + LR * (reward + GAMMA * max(Q_table[next_state,:]))

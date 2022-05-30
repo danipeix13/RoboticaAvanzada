@@ -6,6 +6,10 @@ from numpy import linalg as LA
 sys.path.append('/home/robocomp/software/CoppeliaSim_Edu_V4_3_0_Ubuntu20_04/programming/zmqRemoteApi/clients/python')
 from zmqRemoteApi import RemoteAPIClient
 
+ACTION_TABLE = [
+    [],
+    [],
+]
 
 class EnvKinova_gym(gym.Env):
 
@@ -32,7 +36,9 @@ class EnvKinova_gym(gym.Env):
 
         # SPACES
         self.action_space = U.set_action_space()
+        print("-------ACTION SPACE", self.action_space)
         action = self.action_space.sample()
+        print("-------ACTION", action)
         observation, _, done, _ = self.step(action)
         assert not done
         self.observation_space, self.n = U.set_observation_space(observation)
@@ -61,20 +67,12 @@ class EnvKinova_gym(gym.Env):
 
     def reset(self):
         print("RESET", "STEP:", self.current_step)
-        # self.sim.stopSimulation()
-        # while(self.sim.getSimulationState != self.sim.simulation_stopped):
-        #     time.sleep(0.1)
-        # self.sim.startSimulation()
-        # time.sleep(2)
         self.goal = self.sim.callScriptFunction("reset@gen3", 1) 
-        '''Implementar funcion en el lua. Añadir el move to raandom también, dentro de esa función'''
-        # aux_goal = self.sim.callScriptFunction("move_to_random_x@gen3", 1)
-        # self.goal = aux_goal[:2]
 
         self.current_step = 0
         obs = self.__observate()
-        ret = np.array(obs["pos"][0][:2], dtype=np.float32)
-        return ret
+        print(obs)
+        return obs
 
     def close(self):
         self.sim.stopSimulation()
