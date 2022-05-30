@@ -49,8 +49,17 @@ def __convert_observation_to_space(observation):
 
     return space
 
-def map_observation2state(observ):
-    state = 0
-    for item in observ.values():
-        state += item
-    return int(state)
+def state2index(observ):
+    x = (observ["distX"] + 2) * 25 * 100   # *1000 para pasar a mm
+    y = (observ["distY"] + 2) * 25         # +50 para tranformar en positivo
+    
+    print(observ, x, y)
+    return int(x + y)
+
+def action2index(action):
+    ACTION_TABLE = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8] ]
+    return ACTION_TABLE[action[0]+1][action[1]+1]
+    # return 3*(action[0]+1) + (action[0] + 1)

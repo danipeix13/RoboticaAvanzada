@@ -6,11 +6,6 @@ from numpy import linalg as LA
 sys.path.append('/home/robocomp/software/CoppeliaSim_Edu_V4_3_0_Ubuntu20_04/programming/zmqRemoteApi/clients/python')
 from zmqRemoteApi import RemoteAPIClient
 
-ACTION_TABLE = [
-    [],
-    [],
-]
-
 class EnvKinova_gym(gym.Env):
 
     #################################
@@ -18,7 +13,7 @@ class EnvKinova_gym(gym.Env):
     #################################
     def __init__(self):
         super(EnvKinova_gym, self).__init__()
-        print('PROGRAM STARTED')
+        print('Program started')
         self.client = RemoteAPIClient()
         self.sim = self.client.getObject('sim')
 
@@ -36,37 +31,44 @@ class EnvKinova_gym(gym.Env):
 
         # SPACES
         self.action_space = U.set_action_space()
-        print("-------ACTION SPACE", self.action_space)
+        #print("-------ACTION SPACE", self.action_space)
         action = self.action_space.sample()
-        print("-------ACTION", action)
+        #print("-------ACTION", action)
         observation, _, done, _ = self.step(action)
         assert not done
         self.observation_space, self.n = U.set_observation_space(observation)
         self.goal = [0, 0]
 
     def step(self, action):
+        print("ACTION", action)
         sim_act = [int(action[0]), int(action[1]), 0, 0, 0]
         
         if self.__interpretate_action(sim_act):
             self.sim.callScriptFunction("do_step@gen3", 1, sim_act)
         else:
-            print("INCORRECT ACTION: values not in [-1, 0, 1]")
+            #print("INCORRECT ACTION: values not in [-1, 0, 1]")
             return None
 
         observation = self.__observate()
-        print("OBSERVATION IN INIT", observation)
-        exit, reward = self.__reward_and_or_exit(observation)
+        #print("OBSERVATION IN STEP", observation)
+        exit, reward, arrival, far, dist = self.__reward_and_or_exit(observation)
         self.current_step += 1
         
         if exit:
             with open('output.txt', 'a') as file: 
                 file.write(str(reward) + "\n")
 
-        return observation, reward, exit, {}
+        info = {
+            "arrival": arrival,
+            "far": far,
+            "dist": dist,
+        }
+
+        return observation, reward, exit, info
 
 
     def reset(self):
-        print("RESET", "STEP:", self.current_step)
+        #print("RESET", "STEP:", self.current_step)
         self.goal = self.sim.callScriptFunction("reset@gen3", 1) 
 
         self.current_step = 0
@@ -92,38 +94,32 @@ class EnvKinova_gym(gym.Env):
         return {"distX":obs["dist_x"], "distY":obs["dist_y"]}
 
     def __reward_and_or_exit(self, observation):
-        reward = 0
         exit = False
-
-        #No alejarse
-        if math.sqrt(observation["distX"]**2 + observation["distY"]**2) > 0.1:
-            return True, -10000
-
-        # Posición en XY
+        reward = 0
+        arrival = 0
+        far = 0
         dist = math.sqrt(observation["distX"]**2 + observation["distY"]**2)
-        reward += (1 - self.__normalize(dist, 0, 0.1)) * 100
-        if dist < 0.005:
-            reward += 10000
 
-        # Pinza abierta
-        # reward += (1 - self.__normalize(observation["gripper"], -0.002, -0.01)) * 10
+        if dist > 0.1:
+            exit = True
+            reward = -10000
+            far = 1
+        
+        else:
+            reward += (1 - self.__normalize(dist, 0, 0.1)) * 100
+            
+            if dist < 0.005:
+                exit = True
+                reward += 10000
+                arrival = 1
 
-        # No chocarse
-        # if LA.norm(np.array(observation["fingerL"][1])) > .006 or LA.norm(np.array(observation["fingerR"][1])) > .006:
-        #     reward += -100
-        #     exit = True
+        return exit, reward, arrival, far, dist
 
-        # Posición Z
-        # reward += (1 - self.__normalize(observation["dist_z"], 0, 0.1)) * 100
-
-        # # Pinza cerrada
-        # if len(observation["gripL"]) == 3:
-        #     if LA.norm(np.array(observation["gripL"][1])) > .15 or LA.norm(np.array(observation["gripR"][1])) > .15:
-        #         reward += 10
-
-        # print("Reward: ", reward, " exit: ", exit, "\t", random.random(), "\t", random.random(), "\t", random.random(), "\t", random.random())
-
-        return exit, reward
+        '''
+        Se choca:       True, -1
+        No se choca:    False, 0
+        Llega:          True, 1
+        '''
 
     def __normalize(self, x, min_val, max_val):
         return ((x - min_val) / (max_val + min_val))
