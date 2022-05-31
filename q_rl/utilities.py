@@ -53,7 +53,7 @@ def state2index(observ):
     x = (observ["distX"] + 2) * 25 * 100   # *1000 para pasar a mm
     y = (observ["distY"] + 2) * 25         # +50 para tranformar en positivo
     
-    print(observ, x, y)
+    print("STATE2INDEX", observ, x, y)
     return int(x + y)
 
 def action2index(action):
@@ -63,3 +63,13 @@ def action2index(action):
         [6, 7, 8] ]
     return ACTION_TABLE[action[0]+1][action[1]+1]
     # return 3*(action[0]+1) + (action[0] + 1)
+
+def actionFromAlg(state):
+    action = []
+
+    action.append(0 if abs(state["distX"]) < 0.001 else 1 if state["distX"] > 0.001 else -1)
+    action.append(0 if abs(state["distY"]) < 0.001 else 1 if state["distY"] > 0.001 else -1)
+
+    print("ACTIONFROMALG", state, action)
+
+    return action

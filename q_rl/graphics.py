@@ -17,9 +17,9 @@ class Graphics():
 
     def insertData(self):
         self.exploration.append(np.mean(self.exploration_))
-        self.arrivals.append(np.sum(self.arrivals_))
-        self.farAway.append(np.sum(self.farAway_))
-        self.finalDist.append(np.mean(self.finalDist_))
+        self.arrivals.append(np.sum(self.arrivals_) * 2)
+        self.farAway.append(np.sum(self.farAway_) * 2)
+        self.finalDist.append(np.mean(self.finalDist_) * 1000)
 
         self.exploration_ = []
         self.arrivals_ = []

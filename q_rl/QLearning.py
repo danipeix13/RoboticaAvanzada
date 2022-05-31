@@ -31,7 +31,7 @@ gTables = Graphics()
 for e in range(N_EPISODES):
     #we initialize the first state of the episode
     current_state = env.reset()
-    current_state = U.state2index(current_state)
+    current_state_i = U.state2index(current_state)
     print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     done = False
     info = {}
@@ -46,10 +46,13 @@ for e in range(N_EPISODES):
         # else
         #     he exploits his knowledge using the bellman equation 
         
-        if np.random.uniform(0,1) < EXPLORATION_PROB:
+        if e < 250: 
+            action = U.actionFromAlg(current_state)
+            # EXPLORATION_PROB = EXPLORATION_PROB * GAMMA
+        elif np.random.uniform(0,1) < EXPLORATION_PROB:
             action = env.action_space.sample()
         else:
-            action = np.argmax(Q_table[current_state,:])
+            action = np.argmax(Q_table[current_state_i,:])
             x = action // 3
             y = action % 3
             action = x-1, y-1
@@ -58,24 +61,26 @@ for e in range(N_EPISODES):
         # The environment runs the chosen action and returns
         # the next state, a reward and true if the epiosed is ended.
         next_state, reward, done, info = env.step(action)
-        action = U.action2index(action)
-        next_state = U.state2index(next_state)
         
-        print("EPISODE", e, "ITER", i, "STATE", current_state, "ACTION", action)
+        action_i = U.action2index(action)
+        next_state_i = U.state2index(next_state)
+        
+        print("EPISODE", e, "ITER", i, "STATE", current_state_i, "ACTION", action_i)
 
         # We update our Q-table using the Q-learning iteration
-        Q_table[current_state, action] = (1 - LR) * Q_table[current_state, action] + LR * (reward + GAMMA * max(Q_table[next_state,:]))
+        Q_table[current_state_i, action_i] = (1 - LR) * Q_table[current_state_i, action_i] + LR * (reward + GAMMA * max(Q_table[next_state_i,:]))
         total_episode_reward = total_episode_reward + reward
         # If the episode is finished, we leave the for loop
         if done:
             break
         current_state = next_state
+        current_state_i = next_state_i
         # print(Q_table)
         # time.sleep(1)
 
     gTables.storeData(EXPLORATION_PROB, info["arrival"], info["far"], info["dist"])
     
-    register, show = 10, 500
+    register, show = 50, 500
     if e != 0 and e % register == 0:
         gTables.insertData()
 
